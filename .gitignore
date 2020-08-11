@@ -1,0 +1,7 @@
+/bitrix
+.idea
+.vscode
+/upload
+node_modules
+/bxtest
+/.trash

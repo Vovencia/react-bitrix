@@ -1,0 +1,21 @@
+{
+  "name": "react-bitrix",
+  "version": "0.0.1",
+  "description": "React with bitrix",
+  "homepage": "https://github.com/Vovencia/react-bitrix#readme",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "react",
+    "bitrix",
+    "ssr"
+  ],
+  "author": "Vovencia",
+  "license": "MIT",
+  "repository": {
+    "type" : "git",
+    "url" : "https://github.com/Vovencia/react-bitrix.git"
+  }
+}
