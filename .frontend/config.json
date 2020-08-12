@@ -1,0 +1,6 @@
+{
+  "templatePath": "local/templates/react-bitrix",
+  "servePort": 8889,
+  "serveHost": "http://localhost",
+  "servePath": "/"
+}

@@ -12,10 +12,22 @@
     <?$APPLICATION->ShowHead()?>
 </head>
 <body>
-
 <?
 if (isset($_GET['panel'])) {
     $APPLICATION->ShowPanel();
 }
-?>
 
+?>
+<? React('start'); ?>
+<?$APPLICATION->IncludeComponent(
+    "bitrix:menu",
+    "main",
+    Array(
+        "ROOT_MENU_TYPE"	=>	"main",
+        "CHILD_MENU_TYPE" => "submenu",
+        "MAX_LEVEL"	=>	"3",
+        "USE_EXT"	=>	"N",
+        "MENU_CACHE_TYPE" => "N",
+    )
+);?>
+<? r('Layout'); ?>
