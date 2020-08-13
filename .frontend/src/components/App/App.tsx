@@ -13,6 +13,15 @@ import {safe} from "~utils/safe";
 
 export const AppContainer: FC<{hydrateData?: IHydrateData}> = ({hydrateData}) => {
 	return useMemo(() => {
+		safe(() => {
+			const metaList = ['keywords', 'description'];
+			for (const metaName of metaList) {
+				const el = document.querySelector(`meta[name="${metaName}"]`);
+				if (!el) continue;
+				el.setAttribute('data-react-helmet', 'true');
+			}
+		});
+
 		hydrateData = hydrateData || getHydrateData();
 		const pageStore = new PageStore(hydrateData);
 		const app = new App(pageStore);
