@@ -8,6 +8,7 @@ $prev_item = [
     "items" => &$menu,
 ];
 $prev_depth = -1;
+$currentUrl = preg_replace("/[&?]json/", "", $_SERVER['REQUEST_URI']);
 
 foreach ($arResult as $key => $arItem):
     if ($arItem['DEPTH_LEVEL'] > $prev_depth) {
@@ -18,14 +19,21 @@ foreach ($arResult as $key => $arItem):
         }
     }
 
+    $current = $arItem["LINK"] === $currentUrl;
+    $current_submenu = false;
+
+    if ($arItem["LINK"] !== '/') {
+        $current_submenu = strpos($currentUrl, $arItem["LINK"]) === 0;
+    }
+
     $parents[count($parents) - 1]['items'][] = [
         // "parent" => &$parents[count($parents) - 1],
         "text" => $arItem["TEXT"],
         "depth" => $arItem['DEPTH_LEVEL'],
         "url" => $arItem["LINK"],
         "items" => [],
-        "current" => $arItem["LINK"] === $_SERVER['REQUEST_URI'],
-        "current_submenu" => strpos($_SERVER['REQUEST_URI'], $arItem["LINK"]) === 0,
+        "current" => $current,
+        "current_submenu" => $current_submenu,
     ];
 
     $prev_item = &$parents[count($parents) - 1]['items'][count($parents[count($parents) - 1]['items']) - 1];

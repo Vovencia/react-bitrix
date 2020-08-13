@@ -1,5 +1,5 @@
 <?
-$sSectionName = "Контакты";
+$sSectionName = "Новости";
 $arDirProperties = array(
    "description" => "",
    "keywords" => "",

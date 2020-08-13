@@ -1,10 +1,14 @@
-import {IComponent} from "../../interfaces/component";
-import {store} from "../../utils/store";
+import {IComponent} from "~interfaces/component";
+import {useGetPageStore} from "~src/PageStore";
+import {useEffect} from "react";
 
 export const Store: IComponent<{
 	name: string;
 	value: any;
 }> = ({name, value}) => {
-	store.set(name, value);
+	const store = useGetPageStore();
+	useEffect(() => {
+		store.set(name as any, value);
+	});
 	return null;
 }

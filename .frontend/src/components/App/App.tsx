@@ -1,21 +1,86 @@
 import * as React from 'react';
-import {IHydrateData} from "../../interfaces/hydrateData";
-import {r} from "../../utils/core";
+import {FC, useMemo} from "react";
+import {Helmet} from "react-helmet";
+import {IHydrateData} from "~interfaces/hydrateData";
+import {r} from "~utils/render";
 import styled, {createGlobalStyle} from "styled-components";
+import {getHydrateData} from "~utils/hydrateData";
+import {PageStore, usePageStoreGet} from "~src/PageStore";
+import {App, useAppGet} from "~src/App";
+import {Router} from "~utils/Router";
+import {safe} from "~utils/safe";
 
-export const App: React.FC<{hydrateData: IHydrateData}> = ({hydrateData}) => {
-	if (!hydrateData) {
-		hydrateData = {};
-	}
-	return (
-		<AppElement>
-			<GlobalStyle />
-			{ r(hydrateData.components) }
-		</AppElement>
-	);
+
+export const AppContainer: FC<{hydrateData?: IHydrateData}> = ({hydrateData}) => {
+	return useMemo(() => {
+		hydrateData = hydrateData || getHydrateData();
+		const pageStore = new PageStore(hydrateData);
+		const app = new App(pageStore);
+		const router = new Router(app);
+		safe(() => {
+			(window as any).__app = app;
+		});
+
+		const {Provider: PageStoreProvider} = PageStore.context;
+		const {Provider: AppProvider} = App.context;
+		const {Provider: RouterProvider} = Router.context;
+
+		return (
+			<RouterProvider value={router}>
+				<PageStoreProvider value={pageStore}>
+					<AppProvider value={app}>
+						<AppHelmet />
+						<GlobalStyle />
+						<AppLoading />
+						<AppContent />
+					</AppProvider>
+				</PageStoreProvider>
+			</RouterProvider>
+		);
+	}, []);
 }
 
-export const AppElement = styled.div``;
+export const AppHelmet: FC = () => {
+	const title = usePageStoreGet('page:title') || '';
+	const meta = usePageStoreGet('page:meta') || [];
+
+	return useMemo(() => {
+		const $metaList = meta
+			.filter(_meta => !!_meta.name)
+			.map(_meta => (
+				<meta
+					name={_meta.name}
+					content={_meta.value || ''}
+				/>
+			));
+
+		return (
+			<Helmet>
+				<title>{title}</title>
+				{$metaList}
+			</Helmet>
+		);
+	}, [title, JSON.stringify(meta)]);
+}
+
+export const AppLoading: FC = () => {
+	const pageLoading = !!useAppGet('loadingPage');
+	return useMemo(() => {
+		return <AppLoadingElement Loading={pageLoading} />;
+	}, [pageLoading])
+}
+
+export const AppContent: FC = () => {
+	const content = usePageStoreGet('page:content');
+	return useMemo(() => {
+		return (
+			<React.Fragment>
+				{r(content)}
+			</React.Fragment>
+		);
+	}, [content]);
+}
+
 const GlobalStyle = createGlobalStyle`
 	*,
 	*:after,
@@ -25,15 +90,13 @@ const GlobalStyle = createGlobalStyle`
 	}
 	html,
 	body,
-	#root,
-	${AppElement} {
+	#root {
 		display: flex;
 		flex-direction: column;
 		width: 100%;
 	}
 	body,
-	#root,
-	${AppElement} {
+	#root {
 		min-height: 100%;
 		flex-grow: 1;
 		flex-shrink: 1;
@@ -51,7 +114,6 @@ const GlobalStyle = createGlobalStyle`
 		line-height: 1.2;
 		font-family: Calibri,Candara,Segoe,Segoe UI,Optima,Arial,sans-serif;
 		cursor: default;
-		user-select: none;
 	}
 	body {
 		font-size: 16rem;
@@ -64,5 +126,65 @@ const GlobalStyle = createGlobalStyle`
 	input[type="button"],
 	input[type="submit"] {
 		cursor: pointer;
+		user-select: none;
+	}
+	p a {
+		user-select: auto;
+	}
+`;
+
+export const AppLoadingElement = styled.div<{Loading: boolean}>`
+	position: absolute;
+	top: calc(50% - 5.5em);
+	left: calc(50% - 5.5em);
+	z-index: 99999;
+	pointer-events: none;
+
+	font-size: 10px;
+	text-indent: 0;
+	color: transparent;
+	overflow: hidden;
+	width: 11em;
+	height: 11em;
+	border-radius: 50%;
+	background: #0a3a68;
+	background: linear-gradient(to right, #0a3a68 10%, rgba(10,58,104, 0) 42%);
+	animation: load3 1.4s infinite linear;
+	transform: translateZ(0);
+	
+	transition: opacity 0.1s;
+
+	opacity: ${(props) => props.Loading ? '1' : '0'};
+	animation-play-state: ${(props) => props.Loading ? 'running' : 'paused'};
+	&:before {
+		width: 50%;
+		height: 50%;
+		background: #0a3a68;
+		border-radius: 100% 0 0 0;
+		position: absolute;
+		top: 0;
+		left: 0;
+		content: '';
+	}
+	&:after {
+		background: #ffffff;
+		width: 75%;
+		height: 75%;
+		border-radius: 50%;
+		content: '';
+		margin: auto;
+		position: absolute;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		right: 0;
+	}
+	@keyframes load3 {
+		0% {
+			transform: rotate(0deg);
+		}
+		100% {
+			transform: rotate(360deg);
+		}
 	}
 `;

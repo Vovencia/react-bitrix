@@ -1,9 +1,10 @@
+import {IComponent} from "~interfaces/component";
+
 import {Footer} from "./Footer/Footer";
 import {Layout} from "./Layout/Layout";
 import {Header} from "./Header/Header";
 import {Html} from "./Html/Html";
 import {Store} from "./Store/Store";
-import {IComponent} from "../interfaces/component";
 import {NavMain} from "./NavMain/NavMain";
 import {Wrapper} from "./Wrapper/Wrapper";
 

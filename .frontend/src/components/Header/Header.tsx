@@ -1,50 +1,60 @@
 import * as React from 'react';
-import {IComponent} from "../../interfaces/component";
-import {NavMain} from "../NavMain/NavMain";
-import {Wrapper} from "../Wrapper/Wrapper";
 import styled from "styled-components";
 
+import logoUrl from '~images/logo.png';
+
+import {IComponent} from "~interfaces/component";
+import {NavMain, NavMainElement} from "~components/NavMain/NavMain";
+import {Wrapper} from "~components/Wrapper/Wrapper";
+import {Link} from "~components/Link/Link";
+import {useMemo} from "react";
+
 export const Header: IComponent = () => {
-	return (
-		<HeaderElement>
-			<Wrapper>
-				<HeaderContent>
-					<HeaderLogo>
-						<a>
-							<HeaderLogoImage>Logo</HeaderLogoImage>
-						</a>
-					</HeaderLogo>
-					<NavMain />
-				</HeaderContent>
-			</Wrapper>
-		</HeaderElement>
-	);
+	return useMemo(() => {
+		return (
+			<HeaderElement>
+				<Wrapper>
+					<HeaderContent>
+						<HeaderLogo>
+							<Link href="/">
+								<HeaderLogoImage src={logoUrl} alt="Logo" />
+							</Link>
+						</HeaderLogo>
+						<NavMain />
+					</HeaderContent>
+				</Wrapper>
+			</HeaderElement>
+		);
+	}, []);
 }
 
 export const HeaderElement = styled.div`
 	color: #fff;
 	background: #0A3A68;
+	flex-grow: 0;
+	flex-shrink: 0;
+	${NavMainElement} {
+		margin-left: auto;
+	}
 `;
 export const HeaderContent = styled.div`
-	padding: 30px 0;
+	padding: 20px 0;
 	display: flex;
 	flex-direction: row;
 	width: 100%;
+	align-items: center;
 `;
 export const HeaderLogo = styled.div`
-	margin: -30px 0;
 	flex-grow: 0;
 	flex-shrink: 0;
-	a {
+	a,
+	img {
 		display: block;
 		text-decoration: none;
 	}
 `;
-export const HeaderLogoImage = styled.span`
-	width: 200px;
-	height: 60px;
-	background: #ccc;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+export const HeaderLogoImage = styled.img`
+	width: auto;
+	height: 40px;
+	display: block;
 `;

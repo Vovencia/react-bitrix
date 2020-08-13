@@ -1,5 +1,6 @@
 <? if(!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED!==true)die(); ?>
 <? global $APPLICATION; ?>
+<?php if (!isset($_GET['json'])) { ?>
 <!doctype html>
 <html lang="ru">
 <head>
@@ -16,8 +17,8 @@
 if (isset($_GET['panel'])) {
     $APPLICATION->ShowPanel();
 }
-
 ?>
+<?php } ?>
 <? React('start'); ?>
 <?$APPLICATION->IncludeComponent(
     "bitrix:menu",

@@ -2,6 +2,8 @@
 
 namespace RB {
 
+    use Exception;
+
     class React {
         /**
          * @var React|null
@@ -21,10 +23,15 @@ namespace RB {
         protected function __clone() {}
         protected function __wakeup() {}
 
-        protected $components = [];
+        protected $content = [];
         protected $started = false;
-        protected $hasError = false;
+        public $hasError = false;
+        protected $error = [
+            "message" => "Сервисная ошибка",
+            "code" => 500,
+        ];
         protected $styles = "";
+        protected $store = [];
 
         protected $config;
         protected static function getConfig() {
@@ -65,13 +72,16 @@ namespace RB {
             self::emitHtml();
             ob_end_clean();
         }
+        public static function getErrorJSON() {
+            return json_encode(["error" => self::getInstance()->error]);
+        }
         public static function render() {
             $config = self::getConfig();
             $servePort = $config['servePort'];
             $serveHost = $config['serveHost'];
             $servePath = $config['servePath'];
             $url = "$serveHost:$servePort$servePath";
-            $data = self::getInstance()->hasError ? '{"error": "Сервисная ошибка", "code": 500}' : self::getData(true);
+            $data = self::getInstance()->hasError ? self::getErrorJSON() : self::getData(true);
 
             $options = array(
                 'http' => array(
@@ -91,7 +101,7 @@ namespace RB {
             if (is_string($result)) {
                 try {
                     $result = json_decode($result);
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     return;
                 }
             }
@@ -102,9 +112,14 @@ namespace RB {
         public static function getStyles() {
             return self::getInstance()->styles;
         }
-        protected static function getData($isJSON = false) {
+        public static function getData($isJSON = false) {
             $self = self::getInstance();
-            $data = ["components" => $self->components];
+            $data = array_merge([], $self->store, [
+                "page:title" => self::getTitle(),
+                "page:meta" => self::getMetaList(),
+                "page:content" => $self->content,
+                "url" => preg_replace("/[&?]json/", '', $_SERVER['REQUEST_URI']),
+            ]);
             if ($isJSON) {
                 $data = json_encode($data);
             }
@@ -112,7 +127,7 @@ namespace RB {
         }
         public static function renderData() {
             if (self::getInstance()->hasError) {
-                echo '{"error": "Сервисная ошибка", "code": 500}';
+                echo self::getErrorJSON();
                 return;
             }
             echo self::getData(true);
@@ -180,8 +195,38 @@ namespace RB {
             if (count($self->currentComponentChildren) > 0) {
                 $self->currentComponentChildren[count($self->currentComponentChildren) - 1][] = $children;
             } else {
-                $self->components[] = $children;
+                $self->content[] = $children;
             }
+        }
+        public static function getMetaList() {
+            global $APPLICATION;
+
+            $result = [];
+            $metaNames = ['keywords', 'description'];
+
+            foreach ($metaNames as $metaName) {
+                $value = $APPLICATION->GetProperty($metaName);
+                if (empty($value)) {
+                    $value = '';
+                }
+                $result[] = [
+                    "name" => $metaName,
+                    "value" => $value,
+                ];
+            }
+            return $result;
+        }
+        public static function getTitle() {
+            global $APPLICATION;
+            return $APPLICATION->GetTitle();
+        }
+
+        /**
+         * @param string $key
+         * @param $value
+         */
+        public static function addToStore($key, $value) {
+            self::getInstance()->store[$key] = $value;
         }
     }
 
@@ -224,9 +269,9 @@ namespace RB {
 
 namespace {
     use RB\React;
-
     /**
      * @param string $command
+     * @return string;
      */
     function React($command) {
         switch ( strtolower(trim($command)) ) {
@@ -242,7 +287,13 @@ namespace {
             case 'renderdata':
                 React::renderData();
                 break;
+            case 'getdata':
+                if (React::getInstance()->hasError) {
+                    return React::getErrorJSON();
+                }
+                return React::getData(true);
         }
+        return '';
     }
 
     /**
@@ -282,6 +333,10 @@ namespace {
         if (!is_string($el)) {
             return;
         }
+        if (preg_match("/Store/", $el)) {
+            r_store($props['name'], $props['value']);
+            return;
+        }
         $el = str_replace(" ", "", $el);
         if (preg_match("/^[A-Z][a-zA-Z0-9]*$/", $el)) {
             r_begin($el);
@@ -297,5 +352,12 @@ namespace {
             r_render(str_replace("/", "", $el), $props);
             return;
         }
+    }
+    /**
+     * @param string $key
+     * @param $value
+     */
+    function r_store($key, $value) {
+        React::addToStore($key, $value);
     }
 }

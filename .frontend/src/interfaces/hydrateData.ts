@@ -1,5 +1,10 @@
 export interface IHydrateData {
-	components?: IHydrateDataComponent[];
+	url?: string;
+	content?: IHydrateDataComponent[];
+	error?: {
+		message?: string;
+		code?: number | string;
+	};
 }
 
 export interface IHydrateDataComponent {

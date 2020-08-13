@@ -102,6 +102,7 @@ export class Listener {
 
 export interface IListener<TEvents> {
 	eventName: TEvents;
-	callback: (...args: any[]) => void;
+	callback: IListenerCallback;
 	isOne?: boolean;
 }
+export type IListenerCallback = (...args: any[]) => void;

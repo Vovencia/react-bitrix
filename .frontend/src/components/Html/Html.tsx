@@ -1,6 +1,6 @@
 import * as React from 'react';
 import ReactHtmlParser from 'react-html-parser';
-import {IComponent} from "../../interfaces/component";
+import {IComponent} from "~interfaces/component";
 
 export const Html: IComponent = ({children}) => {
 	if (Array.isArray(children)) {
