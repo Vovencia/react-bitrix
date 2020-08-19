@@ -32,6 +32,7 @@ namespace RB {
         ];
         protected $styles = "";
         protected $store = [];
+        protected $startTime = 0;
 
         protected $config;
         protected static function getConfig() {
@@ -61,6 +62,7 @@ namespace RB {
             if (self::getInstance()->started) {
                 return;
             }
+            self::getInstance()->startTime = microtime(true);
             self::getInstance()->started = true;
             ob_start();
         }
@@ -72,8 +74,17 @@ namespace RB {
             self::emitHtml();
             ob_end_clean();
         }
+        public static function getTimeGone() {
+            if (self::getInstance()->startTime) {
+                return round((microtime(true) - self::getInstance()->startTime) * 1000, 2);
+            }
+            return 0;
+        }
         public static function getErrorJSON() {
-            return json_encode(["error" => self::getInstance()->error]);
+            return json_encode([
+                "error" => self::getInstance()->error,
+                "url" => self::getCurrentUrl(),
+            ]);
         }
         public static function render() {
             $config = self::getConfig();
@@ -83,34 +94,59 @@ namespace RB {
             $url = "$serveHost:$servePort$servePath";
             $data = self::getInstance()->hasError ? self::getErrorJSON() : self::getData(true);
 
-            $options = array(
-                'http' => array(
-                    'method'  => 'POST',
-                    'content' => $data,
-                    'header'=>  "Content-Type: application/json\r\nAccept: application/json\r\n",
-                ),
-                'https' => array(
-                    'method'  => 'POST',
-                    'content' => $data,
-                    'header'=>  "Content-Type: application/json\r\nAccept: application/json\r\n",
-                ),
-            );
+            $cache = new RBCache;
+            $cache->enabled = true;
 
-            $context  = stream_context_create( $options );
-            $result = file_get_contents( $url, false, $context );
-            if (is_string($result)) {
-                try {
-                    $result = json_decode($result);
-                } catch (Exception $e) {
-                    return;
+            $result = $cache->run($data, function() use ($url, $data) {
+                $options = array(
+                    'http' => array(
+                        'method'  => 'POST',
+                        'content' => $data,
+                        'header'=>  "Content-Type: application/json\r\nAccept: application/json\r\n",
+                    ),
+                    'https' => array(
+                        'method'  => 'POST',
+                        'content' => $data,
+                        'header'=>  "Content-Type: application/json\r\nAccept: application/json\r\n",
+                    ),
+                );
+
+                $context  = stream_context_create( $options );
+                $result = file_get_contents($url, false, $context);
+                if (is_string($result)) {
+                    try {
+                        $result = json_decode($result);
+                    } catch (Exception $e) {
+                        return json_decode('{"html": "", "styles": ""}');
+                    }
                 }
-            }
+                return $result;
+            });
             self::getInstance()->styles = $result->styles;
-
+            self::saveStyles();
             echo $result->html;
         }
         public static function getStyles() {
             return self::getInstance()->styles;
+        }
+        public static function saveStyles() {
+            $styles = self::getStyles();
+            $styles = preg_replace("/<\/?style.*?>/", '', $styles);
+            $stylesFile = Config::mainStylesFile();
+            $stylesDir = dirName($stylesFile);
+            if (!file_exists($stylesDir)) {
+                mkdir($stylesDir, 0777, true);
+            }
+            if (!file_exists($stylesFile)) {
+                file_put_contents($stylesFile, "");
+            }
+            $lastStyles = file_get_contents($stylesFile);
+            if ($lastStyles !== $styles) {
+                file_put_contents($stylesFile, $styles);
+            }
+        }
+        public static function getCurrentUrl() {
+            return getCurrentUrl(true);
         }
         public static function getData($isJSON = false) {
             $self = self::getInstance();
@@ -118,7 +154,7 @@ namespace RB {
                 "page:title" => self::getTitle(),
                 "page:meta" => self::getMetaList(),
                 "page:content" => $self->content,
-                "url" => preg_replace("/[&?]json/", '', $_SERVER['REQUEST_URI']),
+                "url" => self::getCurrentUrl(),
             ]);
             if ($isJSON) {
                 $data = json_encode($data);
@@ -128,9 +164,9 @@ namespace RB {
         public static function renderData() {
             if (self::getInstance()->hasError) {
                 echo self::getErrorJSON();
-                return;
+            } else {
+                echo self::getData(true);
             }
-            echo self::getData(true);
         }
         public static function component($name, $props = [], $children = null) {
             if (!self::getInstance()->started) {

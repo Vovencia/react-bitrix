@@ -61,6 +61,8 @@
     "webpack": "^4.44.1"
   },
   "dependencies": {
+    "@types/moment": "^2.13.0",
+    "moment": "^2.27.0",
     "react": "^16.13.1"
   }
 }

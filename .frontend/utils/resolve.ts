@@ -5,7 +5,6 @@ export function resolve(...paths: string[]): string {
 	if (!paths[0]) {
 		paths[0] = '/';
 	}
-
 	for (const item of paths) {
 		if (item === '..') {
 			result.pop();

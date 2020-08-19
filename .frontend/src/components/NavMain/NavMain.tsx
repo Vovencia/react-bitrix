@@ -7,8 +7,6 @@ import {INavList, Nav, NavItemElement, NavLink, NavListElement} from "~component
 
 export const NavMain: IComponent = () => {
 	const items = usePageStoreGet('nav:main') as INavList | undefined;
-	console.log('mainNavItems', items);
-
 	if (!items || !items.length) return null;
 
 	return (

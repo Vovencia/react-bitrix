@@ -1,4 +1,4 @@
-export class EventEmitter<TEvents = string> {
+export class EventEmitter<TEvents extends string = string> {
 	protected _listeners: Listener[] = [];
 
 	public on(eventName: IListener<TEvents>['eventName'], callback: IListener<TEvents>['callback'], isOne: IListener<TEvents>['isOne'] = false): Listener {

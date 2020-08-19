@@ -5,6 +5,7 @@ import {App} from "~src/App";
 import {IHydrateData} from "~interfaces/hydrateData";
 import {Context, createContext, useContext} from "react";
 import {safe} from "~utils/safe";
+import {CancelError} from "~utils/Errors";
 
 export class Router extends EventEmitter {
 	protected static _context: Context<Router>;
@@ -53,9 +54,7 @@ export class Router extends EventEmitter {
 			return;
 		}
 
-		if (this._activePageLoading) {
-			this._activePageLoading.cancel();
-		}
+		this.cancelLoadPageData();
 
 		if (push) {
 			this._changingUrl = true;
@@ -64,15 +63,24 @@ export class Router extends EventEmitter {
 		}
 		this.emit('change:url', url);
 
-		this.app?.set('loadingPage', true);
-		const [data, err] = await resultError(this.loadPageData(url));
-		this.app?.set('loadingPage', false);
+		this.app?.loading('router', true);
+		this._activePageLoading = this.loadPageData(url);
+		const [data, err] = await resultError(this._activePageLoading);
+		this.app?.loading('router', false);
 		if (err) {
+			if (err instanceof CancelError) {
+				return;
+			}
 			this.app?.showError(err);
 		}
 		if (data) {
 			this.pageStore?.hydrateData(data);
 		}
+	}
+	public cancelLoadPageData() {
+		if (!this._activePageLoading) return;
+		this._activePageLoading.cancel();
+		this._activePageLoading = null;
 	}
 	public loadPageData(url: string) {
 		return cancelablePromise<IHydrateData, Error>(async (resolve, reject) => {
@@ -85,7 +93,9 @@ export class Router extends EventEmitter {
 				.then(response => response.json())
 				.then(resolve)
 				.catch(reject);
-		})
+		}, (res, rej) => {
+			rej(new CancelError());
+		});
 	}
 }
 

@@ -9,6 +9,7 @@ import {PageStore, usePageStoreGet} from "~src/PageStore";
 import {App, useAppGet} from "~src/App";
 import {Router} from "~utils/Router";
 import {safe} from "~utils/safe";
+import {Layout} from "~components/Layout/Layout";
 
 
 export const AppContainer: FC<{hydrateData?: IHydrateData}> = ({hydrateData}) => {
@@ -41,7 +42,9 @@ export const AppContainer: FC<{hydrateData?: IHydrateData}> = ({hydrateData}) =>
 						<AppHelmet />
 						<GlobalStyle />
 						<AppLoading />
-						<AppContent />
+						<Layout>
+							<AppContent />
+						</Layout>
 					</AppProvider>
 				</PageStoreProvider>
 			</RouterProvider>
@@ -56,8 +59,9 @@ export const AppHelmet: FC = () => {
 	return useMemo(() => {
 		const $metaList = meta
 			.filter(_meta => !!_meta.name)
-			.map(_meta => (
+			.map((_meta, index) => (
 				<meta
+					key={index}
 					name={_meta.name}
 					content={_meta.value || ''}
 				/>
@@ -160,8 +164,8 @@ export const AppLoadingElement = styled.div<{Loading: boolean}>`
 	background: linear-gradient(to right, #0a3a68 10%, rgba(10,58,104, 0) 42%);
 	animation: load3 1.4s infinite linear;
 	transform: translateZ(0);
-	
-	transition: opacity 0.1s;
+
+	transition: ease-in opacity ${(props) => props.Loading ? '1s' : '0.05s'};
 
 	opacity: ${(props) => props.Loading ? '1' : '0'};
 	animation-play-state: ${(props) => props.Loading ? 'running' : 'paused'};

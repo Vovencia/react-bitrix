@@ -3,10 +3,8 @@ import {safe} from "~utils/safe";
 let listeners: Array<() => void> = [];
 let isReady = false;
 
-console.log('ready.ts');
-
-export function ready(listenerOrIsReady: (() => void) | true) {
-	if (listenerOrIsReady === true) {
+export function ready(fnOrTrue: (() => void) | true) {
+	if (fnOrTrue === true) {
 		isReady = true;
 		for (const listener of listeners) {
 			safe(listener);
@@ -14,11 +12,11 @@ export function ready(listenerOrIsReady: (() => void) | true) {
 		listeners = [];
 		return;
 	}
-	if (typeof listenerOrIsReady === 'function') {
-		if (isReady){
-			return void safe(listenerOrIsReady);
+	if (typeof fnOrTrue === 'function') {
+		if (isReady) {
+			return void safe(fnOrTrue);
 		}
-		listeners.push(listenerOrIsReady);
+		listeners.push(fnOrTrue);
 	}
 }
 

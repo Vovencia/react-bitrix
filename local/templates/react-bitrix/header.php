@@ -5,6 +5,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
     <meta
         name="viewport"
         content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
@@ -31,4 +32,3 @@ if (isset($_GET['panel'])) {
         "MENU_CACHE_TYPE" => "N",
     )
 );?>
-<? r('Layout'); ?>

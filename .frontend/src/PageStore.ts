@@ -15,7 +15,6 @@ export class PageStore extends Store<IPageStore> {
 	public hydrateData(hydrateData: IHydrateData) {
 		this.setStore({
 			...hydrateData,
-			
 		});
 	}
 }

@@ -6,9 +6,10 @@ import {useMemo} from "react";
 
 export const Footer: IComponent = () => {
 	return useMemo(() => {
+		const year = (new Date()).getFullYear().toString(10);
 		return (
 			<FooterElement>
-				<Wrapper>React with bitrix © 2020</Wrapper>
+				<Wrapper>React with bitrix © { year }</Wrapper>
 			</FooterElement>
 		);
 	}, []);

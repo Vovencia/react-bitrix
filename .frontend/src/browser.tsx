@@ -9,7 +9,8 @@ ready(() => {
 	const hydrateData = getHydrateData();
 
 	if ($root) {
-		if (hydrateData) {
+		const rootContent = $root.innerHTML.trim();
+		if (hydrateData && rootContent) {
 			ReactDOM.hydrate(<AppContainer hydrateData={hydrateData} />, $root);
 		} else {
 			ReactDOM.render(<AppContainer />, $root);

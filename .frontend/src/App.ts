@@ -1,9 +1,12 @@
 import {PageStore} from "~src/PageStore";
 import {Context, createContext, useContext} from "react";
 import {Store, useStore, useStoreGet} from "~utils/Store";
+import {PageLoading} from "~utils/PageLoading";
 
 export class App extends Store<IAppStore> {
 	protected static _context: Context<App>;
+	protected pageLoading = new PageLoading();
+
 	public static get context() {
 		if (!this._context) {
 			this._context = createContext({} as App);
@@ -22,6 +25,16 @@ export class App extends Store<IAppStore> {
 	}
 	public showError(e: Error) {
 		alert(e.toString());
+	}
+	public loading(name: string, isLoading: boolean, type: 'both' | 'tab' | 'page' = 'both') {
+		if (isLoading) {
+			this.pageLoading.showLoading(name, type);
+		} else {
+			this.pageLoading.hideLoading(name, type);
+		}
+		if (this.get('loadingPage') !== this.pageLoading.pageLoading) {
+			this.set('loadingPage', this.pageLoading.pageLoading);
+		}
 	}
 }
 
