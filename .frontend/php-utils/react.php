@@ -35,6 +35,7 @@ namespace RB {
         protected $startTime = 0;
 
         protected $config;
+        protected $cacheEnabled = true;
         protected static function getConfig() {
             if (!self::getInstance()->config) {
                 $configString = file_get_contents( __DIR__ . "/../config.json");
@@ -95,7 +96,7 @@ namespace RB {
             $data = self::getInstance()->hasError ? self::getErrorJSON() : self::getData(true);
 
             $cache = new RBCache;
-            $cache->enabled = true;
+            $cache->enabled = self::getInstance()->cacheEnabled;
 
             $result = $cache->run($data, function() use ($url, $data) {
                 $options = array(
@@ -124,6 +125,7 @@ namespace RB {
             });
             self::getInstance()->styles = $result->styles;
             self::saveStyles();
+            self::saveData();
             echo $result->html;
         }
         public static function getStyles() {
@@ -143,6 +145,22 @@ namespace RB {
             $lastStyles = file_get_contents($stylesFile);
             if ($lastStyles !== $styles) {
                 file_put_contents($stylesFile, $styles);
+            }
+        }
+        public static function saveData() {
+            $data = self::getInstance()->hasError ? self::getErrorJSON() : self::getData(true);
+            $data = "window['__setHydrateData'](" . $data . ")";
+            $dataFile = Config::pageDataFile();
+            $dataDir = dirName($dataFile);
+            if (!file_exists($dataDir)) {
+                mkdir($dataDir, 0777, true);
+            }
+            if (!file_exists($dataFile)) {
+                file_put_contents($dataFile, "");
+            }
+            $lastData = file_get_contents($dataFile);
+            if ($lastData !== $data) {
+                file_put_contents($dataFile, $data);
             }
         }
         public static function getCurrentUrl() {

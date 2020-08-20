@@ -5,28 +5,17 @@
 <div id="root"><? React('render') ?></div>
 <?php $APPLICATION->AddHeadScript(RB\Config::mainScriptFile(true)); ?>
 <?php $APPLICATION->SetAdditionalCSS(RB\Config::mainStylesFile(true)); ?>
-<?php $APPLICATION->AddHeadString(
-    '<script id="hydrateData">window["__setHydrateData"](' . React('getdata') . ');</script>',
-        false,
-        \Bitrix\Main\Page\AssetLocation::AFTER_JS
-); ?>
-<?php $APPLICATION->AddHeadString("
-    <script id=\"appReady\">
-        window['__ready'](function() {
-            const removeScripts = ['appReady', 'hydrateData'];
-            for (const scriptId of removeScripts) {
-                const script = document.getElementById(scriptId);
-                if (script) {
-                    script.remove();
-                }
-            }
-        });
-        window['__ready'](true);
-    </script>
-    ",
-    false,
-    \Bitrix\Main\Page\AssetLocation::AFTER_JS
-); ?>
+<?php $APPLICATION->AddHeadScript(RB\Config::pageDataFile(true)); ?>
+<script id="appReady">
+    window['__ready'](function() {
+        const removeScripts = ['appReady', 'hydrateData'];
+        for (const scriptId of removeScripts) {
+            const script = document.getElementById(scriptId);
+            if (script) script.remove();
+        }
+    });
+    window['__ready'](true);
+</script>
 <!-- react render time: <?= \RB\React::getTimeGone() ?>ms -->
 </body>
 </html>

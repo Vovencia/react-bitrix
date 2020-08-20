@@ -45,4 +45,15 @@ class Config {
         }
         return $path;
     }
+    public static function pageDataFile($url = false) {
+        $currentUrl = getCurrentUrl();
+        $salt = Config::cacheSalt();
+        $ext = Config::cacheExt();
+        $fileName = sha1($salt . $currentUrl) . $ext;
+        $path = self::cachePath('data', $fileName);
+        if ($url) {
+            $path = self::getUrl($path);
+        }
+        return $path;
+    }
 }
