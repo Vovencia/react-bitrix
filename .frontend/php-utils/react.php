@@ -1,137 +1,99 @@
 <?php
-
 namespace RB {
 
-    use Exception;
+    use \Bitrix\Main\Page\Asset;
+    use \Bitrix\Main\Page\AssetLocation;
 
-    class React {
-        /**
-         * @var React|null
-         */
-        protected static $instance = null;
-        /**
-         * @return React
-         */
-        public static function getInstance() {
-            if (static::$instance === null) {
-                static::$instance = new static();
-            }
-
-            return static::$instance;
+    class React
+    {
+        protected function __construct()
+        {
         }
-        protected function __construct() {}
-        protected function __clone() {}
-        protected function __wakeup() {}
 
-        protected $content = [];
-        protected $started = false;
-        public $hasError = false;
-        protected $error = [
+        protected function __clone()
+        {
+        }
+
+        protected function __wakeup()
+        {
+        }
+
+        protected static $content = [];
+        protected static $started = false;
+        protected static $hasError = false;
+        protected static $error = [
             "message" => "Сервисная ошибка",
             "code" => 500,
         ];
-        protected $styles = "";
-        protected $store = [];
-        protected $startTime = 0;
+        protected static $styles = "";
+        protected static $store = [];
+        protected static $startTime = 0;
 
-        protected $config;
-        protected $cacheEnabled = true;
-        protected static function getConfig() {
-            if (!self::getInstance()->config) {
-                $configString = file_get_contents( __DIR__ . "/../config.json");
-                self::getInstance()->config = json_decode($configString, true);
-            }
-            return self::getInstance()->config;
+        protected static $cacheEnabled = true;
+        protected static $inlineData = false;
+
+        public static function isJSON()
+        {
+            $headers = apache_request_headers();
+            return isset($headers["Content-Result"]) && $headers["Content-Result"] === 'json';
         }
-        protected static function ejectContent() {
+
+        public static function start()
+        {
+            if (self::$started) {
+                return;
+            }
+            self::$startTime = microtime(true);
+            self::$started = true;
+            ob_start();
+        }
+
+        public static function end()
+        {
+            if (!self::$started) {
+                return;
+            }
+            self::$started = false;
             $content = ob_get_contents();
-            ob_end_clean();
-            ob_start();
-            return $content;
-        }
-        protected static function emitHtml() {
-            $content = self::ejectContent();
-            if ($content) {
-                self::addChildren([
-                    "name" => "Html",
-                    "props" => [],
-                    "children" => [$content],
-                ]);
+
+            $parsed = HTMLParser::parse($content);
+            if ($parsed !== null) {
+                self::$content = $parsed;
             }
-        }
-        public static function start() {
-            if (self::getInstance()->started) {
-                return;
-            }
-            self::getInstance()->startTime = microtime(true);
-            self::getInstance()->started = true;
-            ob_start();
-        }
-        public static function end() {
-            if (!self::getInstance()->started) {
-                return;
-            }
-            self::getInstance()->started = false;
-            self::emitHtml();
+
             ob_end_clean();
         }
-        public static function getTimeGone() {
-            if (self::getInstance()->startTime) {
-                return round((microtime(true) - self::getInstance()->startTime) * 1000, 2);
+
+        public static function getTimeGone()
+        {
+            if (self::$startTime) {
+                return round((microtime(true) - self::$startTime) * 1000, 2);
             }
             return 0;
         }
-        public static function getErrorJSON() {
-            return json_encode([
-                "error" => self::getInstance()->error,
-                "url" => self::getCurrentUrl(),
-            ]);
-        }
-        public static function render() {
-            $config = self::getConfig();
-            $servePort = $config['servePort'];
-            $serveHost = $config['serveHost'];
-            $servePath = $config['servePath'];
-            $url = "$serveHost:$servePort$servePath";
-            $data = self::getInstance()->hasError ? self::getErrorJSON() : self::getData(true);
+
+        public static function render()
+        {
+            $data = self::getHydrateData();
 
             $cache = new RBCache;
-            $cache->enabled = self::getInstance()->cacheEnabled;
+            $cache->enabled = self::$cacheEnabled && false;
 
-            $result = $cache->run($data, function() use ($url, $data) {
-                $options = array(
-                    'http' => array(
-                        'method'  => 'POST',
-                        'content' => $data,
-                        'header'=>  "Content-Type: application/json\r\nAccept: application/json\r\n",
-                    ),
-                    'https' => array(
-                        'method'  => 'POST',
-                        'content' => $data,
-                        'header'=>  "Content-Type: application/json\r\nAccept: application/json\r\n",
-                    ),
-                );
-
-                $context  = stream_context_create( $options );
-                $result = file_get_contents($url, false, $context);
-                if (is_string($result)) {
-                    try {
-                        $result = json_decode($result);
-                    } catch (Exception $e) {
-                        return json_decode('{"html": "", "styles": ""}');
-                    }
-                }
-                return $result;
+            $result = $cache->run($data, function () use ($data) {
+                return NodeConnect::exec($data);
             });
-            self::getInstance()->styles = $result->styles;
+            self::$styles = $result['styles'];
             self::saveStyles();
-            self::saveData();
-            echo $result->html;
+            echo $result['html'];
         }
-        public static function getStyles() {
-            return self::getInstance()->styles;
+
+        public static function getStyles()
+        {
+            return self::$styles;
         }
-        public static function saveStyles() {
+
+        public static function saveStyles()
+        {
             $styles = self::getStyles();
             $styles = preg_replace("/<\/?style.*?>/", '', $styles);
             $stylesFile = Config::mainStylesFile();
@@ -147,8 +109,26 @@ namespace RB {
                 file_put_contents($stylesFile, $styles);
             }
         }
-        public static function saveData() {
-            $data = self::getInstance()->hasError ? self::getErrorJSON() : self::getData(true);
+
+        public static function getHydrateData($getJSON = false)
+        {
+            if (self::$hasError) {
+                $result = [
+                    "error" => self::$error,
+                    "url" => self::getCurrentUrl(),
+                ];
+            } else {
+                $result = self::getData();
+            }
+            if ($getJSON) {
+                return json_encode($result);
+            }
+            return $result;
+        }
+
+        public static function saveData()
+        {
+            $data = self::getHydrateData(true);
             $data = "window['__setHydrateData'](" . $data . ")";
             $dataFile = Config::pageDataFile();
             $dataDir = dirName($dataFile);
@@ -163,101 +143,42 @@ namespace RB {
                 file_put_contents($dataFile, $data);
             }
         }
-        public static function getCurrentUrl() {
+
+        public static function getCurrentUrl()
+        {
             return getCurrentUrl(true);
         }
-        public static function getData($isJSON = false) {
-            $self = self::getInstance();
-            $data = array_merge([], $self->store, [
+
+        public static function getData()
+        {
+            return array_merge([], self::$store, [
                 "page:title" => self::getTitle(),
                 "page:meta" => self::getMetaList(),
-                "page:content" => $self->content,
+                "page:content" => self::$content,
                 "url" => self::getCurrentUrl(),
             ]);
-            if ($isJSON) {
-                $data = json_encode($data);
-            }
-            return $data;
         }
-        public static function renderData() {
-            if (self::getInstance()->hasError) {
-                echo self::getErrorJSON();
-            } else {
-                echo self::getData(true);
-            }
-        }
-        public static function component($name, $props = [], $children = null) {
-            if (!self::getInstance()->started) {
-                return;
-            }
-            self::emitHtml();
-            self::addChildren([
-                "name" => $name,
-                "props" => $props,
-                "children" => $children,
-            ]);
-        }
-        protected $currentComponent = [];
-        protected $currentComponentChildren = [];
-        protected $currentComponentProps = [];
-        public static function componentStart($name) {
-            if (!self::getInstance()->started) {
-                return;
-            }
-            $self = self::getInstance();
-            $self->currentComponent[] = $name;
-            $self->currentComponentChildren[] = [];
-            $self->currentComponentProps[] = [];
-        }
-        public static function componentEnd($name) {
-            if (!self::getInstance()->started) {
-                return;
-            }
-            $self = self::getInstance();
-            $start_name = array_pop($self->currentComponent);
-            if ($start_name !== $name) {
-                $self->hasError = true;
-            }
-            $children = array_pop($self->currentComponentChildren);
-            $props = array_pop($self->currentComponentProps);
-            $content = self::ejectContent();
-            if ($content && strlen($content)) {
-                $children[] = [
-                    "name" => "Html",
-                    "children" => [$content],
-                    "props" => [],
-                ];
-            }
-            self::addChildren([
-                "name" => $name,
-                "children" => $children,
-                "props" => $props,
-            ]);
-        }
-        public static function setComponentProps($props) {
-            $self = self::getInstance();
-            if (count($self->currentComponentProps) < 1) return;
-            $self->currentComponentProps[count($self->currentComponentProps) - 1] = $props;
-        }
-        public static function setComponentChildren($children) {
-            $self = self::getInstance();
-            if (count($self->currentComponentChildren) < 1) return;
-            $self->currentComponentChildren[count($self->currentComponentChildren) - 1] = $children;
-        }
-        protected static function addChildren($children) {
-            $self = self::getInstance();
-            if (count($self->currentComponentChildren) > 0) {
-                $self->currentComponentChildren[count($self->currentComponentChildren) - 1][] = $children;
-            } else {
-                $self->content[] = $children;
-            }
-        }
-        public static function getMetaList() {
-            global $APPLICATION;
 
+        public static function getDataJSON()
+        {
+            return json_encode(self::getData());
+        }
+
+        public static function getError()
+        {
+            return self::$error;
+        }
+
+        public static function getErrorJSON()
+        {
+            return json_encode(self::getError());
+        }
+
+        public static function getMetaList()
+        {
+            global $APPLICATION;
             $result = [];
             $metaNames = ['keywords', 'description'];
-
             foreach ($metaNames as $metaName) {
                 $value = $APPLICATION->GetProperty($metaName);
                 if (empty($value)) {
@@ -270,99 +191,87 @@ namespace RB {
             }
             return $result;
         }
-        public static function getTitle() {
+
+        public static function getTitle()
+        {
             global $APPLICATION;
             return $APPLICATION->GetTitle();
+        }
+
+        public static function getPageDataUrl()
+        {
+            self::saveData();
+            return Config::pageDataFile(true);
+        }
+
+        public static function renderData()
+        {
+            $data = self::getHydrateData(true);
+            if (self::isJSON()) {
+                echo $data;
+                return;
+            }
+            if (self::$inlineData) {
+                Asset::getInstance()->addString(
+                    '<script id="hydrateData">window["__setHydrateData"](' . $data . ');</script>',
+                    false,
+                    AssetLocation::BODY_END
+                );
+            } else {
+                Asset::getInstance()->addJs(self::getPageDataUrl());
+            }
         }
 
         /**
          * @param string $key
          * @param $value
          */
-        public static function addToStore($key, $value) {
-            self::getInstance()->store[$key] = $value;
+        public static function addToStore($key, $value)
+        {
+            self::$store[$key] = $value;
         }
-    }
 
-    class Component {
-        public static function create($name, $props = [], $children = []) {
-            return new Component($name, $props, $children);
-        }
-        public static function render($name, $props = [], $children = []) {
-            $component = new Component($name, $props, $children);
-            $component->start();
-            $component->end();
-        }
-        protected $name;
-        protected $props;
-        protected $children;
-        protected $started = false;
-        public function __construct($name, $props = [], $children = []) {
-            $this->name = $name;
-            $this->props = $props;
-            $this->children = $children;
-        }
-        public function start() {
-            if ($this->started) {
-                return;
+        /**
+         * @param array $props
+         * @return string
+         */
+        public static function getPropsString($props = []) {
+            if (empty($props)) {
+                return "";
             }
-            $this->started = true;
-            React::componentStart($this->name);
-            React::setComponentProps($this->props);
-            React::setComponentChildren($this->children);
-        }
-        public function end() {
-            if (!$this->started) {
-                return;
-            }
-            $this->started = false;
-            React::componentEnd($this->name);
+            $props = base64_encode(json_encode($props));
+            return " :props=\"$props\"";
         }
     }
 }
 
 namespace {
     use RB\React;
+
     /**
-     * @param string $command
-     * @return string;
+     * Преобразование props компонента в html attribute (:props)
+     * @param array $props
+     * @return string
      */
-    function React($command) {
-        switch ( strtolower(trim($command)) ) {
-            case 'start':
-                React::start();
-                break;
-            case 'end';
-                React::end();
-                break;
-            case 'render':
-                React::render();
-                break;
-            case 'renderdata':
-                React::renderData();
-                break;
-            case 'getdata':
-                if (React::getInstance()->hasError) {
-                    return React::getErrorJSON();
-                }
-                return React::getData(true);
-        }
-        return '';
+    function r_props($props = []) {
+        return React::getPropsString($props);
     }
 
     /**
      * Начало компонента
      * @param string $name Имя компонента (например Layout)
+     * @param array $props
      */
-    function r_begin($name) {
-        React::componentStart($name);
+    function r_begin($name, $props = []) {
+        $props = r_props($props);
+        echo "<$name$props>";
     }
     /**
      * Конец компонента
      * @param string $name Имя компонента (например Layout)
      */
     function r_end($name) {
-        React::componentEnd($name);
+        echo "</$name>";
     }
 
     /**
@@ -371,7 +280,9 @@ namespace {
      * @param array $props Пропсы компонента
      */
     function r_render($name, $props = []) {
-        React::component($name, $props);
+        r_begin($name, $props);
+        r_end($name);
+        // React::component($name, $props);
     }
 
     /**
@@ -393,12 +304,10 @@ namespace {
         }
         $el = str_replace(" ", "", $el);
         if (preg_match("/^[A-Z][a-zA-Z0-9]*$/", $el)) {
-            r_begin($el);
-            React::setComponentProps($props);
+            r_begin($el, $props);
             return;
         }
         if (preg_match("/^\/[A-Z][a-zA-Z0-9]*$/", $el)) {
-            React::setComponentProps($props);
             r_end(str_replace("/", "", $el));
             return;
         }
@@ -412,6 +321,6 @@ namespace {
      * @param $value
      */
     function r_store($key, $value) {
-        React::addToStore($key, $value);
+         React::addToStore($key, $value);
     }
 }

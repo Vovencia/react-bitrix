@@ -8,7 +8,8 @@ export interface IHydrateData {
 }
 
 export interface IHydrateDataComponent {
-	name: string;
+	type: 'tag' | 'text';
+	tag?: string;
 	props?: {[key: string]: any};
 	children?: Array<string | IHydrateDataComponent | null> | string;
 }

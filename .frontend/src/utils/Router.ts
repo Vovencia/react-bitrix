@@ -74,7 +74,7 @@ export class Router extends EventEmitter {
 			this.app?.showError(err);
 		}
 		if (data) {
-			this.pageStore?.hydrateData(data);
+			this.app?.hydrateData(data);
 		}
 	}
 	public cancelLoadPageData() {
@@ -89,7 +89,12 @@ export class Router extends EventEmitter {
 			} else {
 				url += '?json';
 			}
-			fetch(url)
+			fetch(url, {
+				headers: {
+					'Content-Type': 'application/json',
+					'Content-Result': 'json',
+				}
+			})
 				.then(response => response.json())
 				.then(resolve)
 				.catch(reject);

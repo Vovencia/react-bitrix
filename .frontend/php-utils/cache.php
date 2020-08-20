@@ -1,6 +1,6 @@
 <?php
 namespace RB;
-use Bitrix\Main\DB\Exception;
+use \Exception;
 use Closure;
 
 class RBCache {
@@ -10,7 +10,7 @@ class RBCache {
         return filemtime(Config::reactScriptPath());
     }
     /**
-     * @param array $data
+     * @param string $data
      * @param Closure $handler
      * @return mixed
      */
@@ -40,28 +40,28 @@ class RBCache {
         if ($cache === false) {
             $cacheNeedUpdate = true;
         }
-        $cache = json_decode($cache);
+        $cache = json_decode($cache, true);
         if ($cache === null) {
             $cacheNeedUpdate = true;
         }
         if (!$cacheNeedUpdate) {
             if (
-                !isset($cache->data) ||
-                !isset($cache->result) ||
-                !isset($cache->scriptChangedTime)
+                !isset($cache['data']) ||
+                !isset($cache['result']) ||
+                !isset($cache['scriptChangedTime'])
             ){
                 $cacheNeedUpdate = true;
             }
         }
         if (!$cacheNeedUpdate) {
-            $lastScriptChangedTime = json_encode($cache->scriptChangedTime);
+            $lastScriptChangedTime = json_encode($cache['scriptChangedTime']);
             $scriptChangedTime = json_encode(self::scriptChangedTime());
             if ($lastScriptChangedTime !== $scriptChangedTime) {
                 $cacheNeedUpdate = true;
             }
         }
         if (!$cacheNeedUpdate) {
-            $cacheDataStr = trim(json_encode($cache->data));
+            $cacheDataStr = trim(json_encode($cache['data']));
             $currentDataStr = trim(json_encode($data));
             if ($cacheDataStr !== $currentDataStr) {
                 $cacheNeedUpdate = true;
@@ -78,11 +78,11 @@ class RBCache {
                     "data" => $data,
                     "result" => $result,
                 ];
-                $cache = json_decode(json_encode($cache));
+                $cache = json_decode(json_encode($cache), true);
                 file_put_contents($cacheFile, json_encode($cache));
             } catch (Exception $e) {}
         }
 
-        return $cache->result;
+        return $cache['result'];
     }
 }

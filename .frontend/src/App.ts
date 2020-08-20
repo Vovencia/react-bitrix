@@ -2,6 +2,7 @@ import {PageStore} from "~src/PageStore";
 import {Context, createContext, useContext} from "react";
 import {Store, useStore, useStoreGet} from "~utils/Store";
 import {PageLoading} from "~utils/PageLoading";
+import {IHydrateData} from "~interfaces/hydrateData";
 
 export class App extends Store<IAppStore> {
 	protected static _context: Context<App>;
@@ -35,6 +36,9 @@ export class App extends Store<IAppStore> {
 		if (this.get('loadingPage') !== this.pageLoading.pageLoading) {
 			this.set('loadingPage', this.pageLoading.pageLoading);
 		}
+	}
+	public hydrateData(data: IHydrateData) {
+		return this.pageStore?.hydrateData(data);
 	}
 }
 

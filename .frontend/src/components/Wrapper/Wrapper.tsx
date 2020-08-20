@@ -3,9 +3,10 @@ import styled from "styled-components";
 import {IComponent} from "~interfaces/component";
 import {r} from "~utils/render";
 
-export const Wrapper: IComponent = ({children}) => {
+export const Wrapper: IComponent = ({children, ...props}) => {
+	console.log('Wrapper', props);
 	return (
-		<WrapperElement>
+		<WrapperElement {...props}>
 			{ r(children) }
 		</WrapperElement>
 	);

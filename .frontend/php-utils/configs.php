@@ -1,7 +1,16 @@
 <?php
 namespace RB;
 
+
 class Config {
+    protected static $frontendConfig;
+
+    public static function getFrontendConfig() {
+        if (self::$frontendConfig == null) {
+            self::$frontendConfig = json_decode(file_get_contents( __DIR__ . "/../config.json"), true);
+        }
+        return self::$frontendConfig;
+    }
     public static function rootPath(...$paths) {
         return resolve(__DIR__, '..', '..', ...$paths);
     }
@@ -49,7 +58,7 @@ class Config {
         $currentUrl = getCurrentUrl();
         $salt = Config::cacheSalt();
         $ext = Config::cacheExt();
-        $fileName = sha1($salt . $currentUrl) . $ext;
+        $fileName = sha1($salt . $currentUrl) . '.js';
         $path = self::cachePath('data', $fileName);
         if ($url) {
             $path = self::getUrl($path);
