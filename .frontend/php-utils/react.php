@@ -1,22 +1,9 @@
 <?php
 namespace RB {
-
-    use \Bitrix\Main\Page\Asset;
-    use \Bitrix\Main\Page\AssetLocation;
-
-    class React
-    {
-        protected function __construct()
-        {
-        }
-
-        protected function __clone()
-        {
-        }
-
-        protected function __wakeup()
-        {
-        }
+    class React {
+        protected function __construct(){}
+        protected function __clone(){}
+        protected function __wakeup(){}
 
         protected static $content = [];
         protected static $started = false;
@@ -25,93 +12,106 @@ namespace RB {
             "message" => "Сервисная ошибка",
             "code" => 500,
         ];
-        protected static $styles = "";
         protected static $store = [];
         protected static $startTime = 0;
 
         protected static $cacheEnabled = true;
-        protected static $inlineData = false;
+        protected static $cacheHTMLParse = true;
 
-        public static function isJSON()
-        {
+        /**
+         * @return bool
+         */
+        public static function isJSON() {
             $headers = apache_request_headers();
             return isset($headers["Content-Result"]) && $headers["Content-Result"] === 'json';
         }
 
-        public static function start()
-        {
-            if (self::$started) {
-                return;
-            }
+        public static function start() {
+            if (self::$started) return;
             self::$startTime = microtime(true);
             self::$started = true;
             ob_start();
         }
 
-        public static function end()
-        {
-            if (!self::$started) {
-                return;
-            }
+        public static function end() {
+            if (!self::$started) return;
             self::$started = false;
             $content = ob_get_contents();
+            ob_end_clean();
 
-            $parsed = HTMLParser::parse($content);
-            if ($parsed !== null) {
-                self::$content = $parsed;
+            if (self::$cacheHTMLParse) {
+                $parsed = RBCache::resultCache('html', $content, true, function() use ($content) {
+                    return HTMLParser::parse($content);
+                });
+            } else {
+                $parsed = HTMLParser::parse($content);
             }
 
-            ob_end_clean();
+            if ($parsed !== null) {
+                self::$content = $parsed;
+            } else {
+                self::$hasError = true;
+            }
         }
 
-        public static function getTimeGone()
-        {
+        /**
+         * @return float|int
+         */
+        public static function getTimeGone() {
             if (self::$startTime) {
                 return round((microtime(true) - self::$startTime) * 1000, 2);
             }
             return 0;
         }
 
-        public static function render()
-        {
+        public static function renderHTML() {
             $data = self::getHydrateData();
 
-            $cache = new RBCache;
-            $cache->enabled = self::$cacheEnabled && false;
+            if (self::$cacheEnabled) {
+                $result = RBCache::dataCache($data, function () use ($data) {
+                    return NodeConnect::exec($data);
+                });
+            } else {
+                $result = NodeConnect::exec($data);
+            }
 
-            $result = $cache->run($data, function () use ($data) {
-                return NodeConnect::exec($data);
-            });
-            self::$styles = $result['styles'];
-            self::saveStyles();
+            self::addStyles($result['styledStyles'], $result['styles']);
             echo $result['html'];
         }
-
-        public static function getStyles()
-        {
-            return self::$styles;
+        /**
+         * @param string $styledStyles
+         */
+        protected static function _addStyledStyles($styledStyles) {
+            $styledStyles = preg_replace("/<\/?style.*?>/", '', $styledStyles);
+            $styledStylesUrl = RBCache::contentCache('styledStyles', '.css', $styledStyles);
+            Page::addAsset($styledStylesUrl, Page::TYPE_CSS);
         }
-
-        public static function saveStyles()
-        {
-            $styles = self::getStyles();
-            $styles = preg_replace("/<\/?style.*?>/", '', $styles);
-            $stylesFile = Config::mainStylesFile();
-            $stylesDir = dirName($stylesFile);
-            if (!file_exists($stylesDir)) {
-                mkdir($stylesDir, 0777, true);
-            }
-            if (!file_exists($stylesFile)) {
-                file_put_contents($stylesFile, "");
-            }
-            $lastStyles = file_get_contents($stylesFile);
-            if ($lastStyles !== $styles) {
-                file_put_contents($stylesFile, $styles);
+        /**
+         * @param array<string> $styles
+         */
+        protected static function _addStyles($styles) {
+            foreach ($styles as $style) {
+                $path = $style['path'];
+                $content = $style['content'];
+                $styledStylesUrl = RBCache::contentCache($path, '.css', $content);
+                Page::addAsset($styledStylesUrl, Page::TYPE_CSS);
             }
         }
 
-        public static function getHydrateData($getJSON = false)
-        {
+        /**
+         * @param string $styledStyles
+         * @param array<string> $styles
+         */
+        public static function addStyles($styledStyles, $styles) {
+            self::_addStyledStyles($styledStyles);
+            self::_addStyles($styles);
+        }
+
+        /**
+         * @param boolean $getJSON
+         * @return string|array
+         */
+        public static function getHydrateData($getJSON = false) {
             if (self::$hasError) {
                 $result = [
                     "error" => self::$error,
@@ -121,104 +121,77 @@ namespace RB {
                 $result = self::getData();
             }
             if ($getJSON) {
-                return json_encode($result);
+                $result = json_encode($result);
+                if ($result === false) {
+                    return "";
+                }
+                return $result;
             }
             return $result;
         }
 
-        public static function saveData()
-        {
-            $data = self::getHydrateData(true);
-            $data = "window['__setHydrateData'](" . $data . ")";
-            $dataFile = Config::pageDataFile();
-            $dataDir = dirName($dataFile);
-            if (!file_exists($dataDir)) {
-                mkdir($dataDir, 0777, true);
-            }
-            if (!file_exists($dataFile)) {
-                file_put_contents($dataFile, "");
-            }
-            $lastData = file_get_contents($dataFile);
-            if ($lastData !== $data) {
-                file_put_contents($dataFile, $data);
-            }
+        /**
+         * @return string
+         */
+        public static function getCurrentUrl() {
+            return Page::getCurrentUrl(true);
         }
 
-        public static function getCurrentUrl()
-        {
-            return getCurrentUrl(true);
-        }
-
-        public static function getData()
-        {
+        /**
+         * @return array
+         */
+        public static function getData() {
             return array_merge([], self::$store, [
-                "page:title" => self::getTitle(),
-                "page:meta" => self::getMetaList(),
+                "page:title" => Page::getTitle(),
+                "page:meta" => Page::getMetaList(),
                 "page:content" => self::$content,
                 "url" => self::getCurrentUrl(),
             ]);
         }
 
-        public static function getDataJSON()
-        {
-            return json_encode(self::getData());
-        }
-
-        public static function getError()
-        {
-            return self::$error;
-        }
-
-        public static function getErrorJSON()
-        {
-            return json_encode(self::getError());
-        }
-
-        public static function getMetaList()
-        {
-            global $APPLICATION;
-            $result = [];
-            $metaNames = ['keywords', 'description'];
-            foreach ($metaNames as $metaName) {
-                $value = $APPLICATION->GetProperty($metaName);
-                if (empty($value)) {
-                    $value = '';
-                }
-                $result[] = [
-                    "name" => $metaName,
-                    "value" => $value,
-                ];
+        /**
+         * @return string
+         */
+        public static function getDataJSON() {
+            $result = json_encode(self::getData());
+            if ($result === false) {
+                return "";
             }
             return $result;
         }
 
-        public static function getTitle()
-        {
-            global $APPLICATION;
-            return $APPLICATION->GetTitle();
+        /**
+         * @return array
+         */
+        public static function getError() {
+            return self::$error;
         }
 
-        public static function getPageDataUrl()
-        {
-            self::saveData();
-            return Config::pageDataFile(true);
-        }
-
-        public static function renderData()
-        {
-            $data = self::getHydrateData(true);
-            if (self::isJSON()) {
-                echo $data;
-                return;
+        /**
+         * @return string
+         */
+        public static function getErrorJSON() {
+            $result = json_encode(self::getError());
+            if ($result === false) {
+                return "";
             }
-            if (self::$inlineData) {
-                Asset::getInstance()->addString(
-                    '<script id="hydrateData">window["__setHydrateData"](' . $data . ');</script>',
-                    false,
-                    AssetLocation::BODY_END
-                );
+            return $result;
+        }
+
+        /**
+         * @return string
+         */
+        public static function getPageDataUrl() {
+            $data = self::getHydrateData(true);
+            $data = "window['__setHydrateData'](" . $data . ")";
+            return RBCache::contentCache('HydrateData', 'js', $data, true);
+        }
+
+        public static function renderData() {
+            if (self::isJSON()) {
+                echo self::getHydrateData(true);
             } else {
-                Asset::getInstance()->addJs(self::getPageDataUrl());
+                Page::addAsset(self::getPageDataUrl());
             }
         }
 
@@ -226,8 +199,7 @@ namespace RB {
          * @param string $key
          * @param $value
          */
-        public static function addToStore($key, $value)
-        {
+        public static function addToStore($key, $value) {
             self::$store[$key] = $value;
         }
 
@@ -242,6 +214,11 @@ namespace RB {
             $props = base64_encode(json_encode($props));
             return " :props=\"$props\"";
         }
+        public static function renderRenderTime() {
+            $time = self::getTimeGone();
+            echo "<!-- render time: $time ms -->";
+            echo "<script>console.log('render time: $time ms')</script>";
+        }
     }
 }
 
@@ -251,10 +228,15 @@ namespace {
     /**
      * Преобразование props компонента в html attribute (:props)
      * @param array $props
+     * @param boolean $get
      * @return string
      */
-    function r_props($props = []) {
-        return React::getPropsString($props);
+    function r_props($props = [], $get = false) {
+        $props = React::getPropsString($props);
+        if (!$get) {
+            echo $props;
+        }
+        return $props;
     }
 
     /**
@@ -263,7 +245,7 @@ namespace {
      * @param array $props
      */
     function r_begin($name, $props = []) {
-        $props = r_props($props);
+        $props = r_props($props, true);
         echo "<$name$props>";
     }
     /**

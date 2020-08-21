@@ -64,7 +64,11 @@ class NodeConnect {
                 $result = json_decode($result, true);
             }
         } catch (\Exception $e) {
-            return ["html" => "", "styles" => ""];
+            return [
+                "html" => "",
+                "styledStyles" => "",
+                "styles" => [],
+            ];
         }
         return $result;
     }

@@ -3,6 +3,8 @@ import * as bodyParser from 'body-parser';
 
 import config from '../config.json';
 import {statSync} from "fs";
+import {IServerRender} from "~interfaces/IRender";
+import {IHydrateData} from "~interfaces/hydrateData";
 
 const MAIN_SCRIPT = require.resolve('../dist/main.js');
 
@@ -33,8 +35,9 @@ app.all('/', (req, res) => {
 	} catch (e) {
 		console.error(e);
 	}
+	data = data as IHydrateData;
 
-	const render = require(MAIN_SCRIPT).default as (data: any) => {html: string, styles: string};
+	const render: IServerRender = require(MAIN_SCRIPT).default;
 	try {
 		const result = render(data);
 		res.send(result);

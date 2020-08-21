@@ -2,6 +2,7 @@ import moment from 'moment';
 import {Workspace} from "../../utils/workspace";
 import {safe} from "~utils/safe";
 import {noop} from "~utils/noop";
+import {call} from "~utils/call";
 
 let consoleLog = noop;
 let consoleWarn = noop;
@@ -34,16 +35,51 @@ class Logging {
 		return moment().format('HH:mm:ss');
 	}
 	public log = (...args: any[]) => {
-		if (!this._isLogEnabled) return;
-		safe(() => consoleLog.call(console,'[Log]', `[${this.time}]`, ...args));
+		this.consoleCall('log', args);
 	}
 	public warn = (...args: any[]) => {
-		if (!this._isErrorEnabled) return;
-		safe(() => consoleWarn.call(console,'[Warn]', `[${this.time}]`, ...args));
+		this.consoleCall('warn', args);
 	}
 	public error = (...args: any[]) => {
+		this.consoleCall('error', args);
+	}
+	protected consoleCall(type: 'log' | 'warn' | 'error', args: any[]) {
+		if (type === 'log' && !this._isLogEnabled) return;
 		if (!this._isErrorEnabled) return;
-		safe(() => consoleError.call(console,'[Error]', `[${this.time}]`, ...args));
+		const stack = this._workspace.isDev ? this.getStack() : [];
+		stack.shift();
+		stack.shift();
+		const method = call(() => {
+			if (type === 'error') return consoleError;
+			if (type === 'warn') return consoleWarn;
+			return consoleLog;
+		});
+		let typeName: string | string[] = type.split('');
+		typeName[0] = typeName[0].toUpperCase();
+		typeName = typeName.join('');
+		const typeNameValue = `[${typeName}]`;
+		const timeValue = `[${this.time}]`
+		const stackValue = stack.length ? `\n${stack.join('\n')}` : undefined;
+		safe(() => {
+			method.call(
+				console,
+				typeNameValue,
+				timeValue,
+				...args,
+				stackValue
+			);
+		});
+	}
+	public getStack(): string[] {
+		try {
+			let stack = (new Error().stack || '').split('\n');
+			stack.shift();
+			stack.shift();
+			stack = stack.map(line => line.trim());
+			return stack;
+		} catch (e) {
+			return [];
+		}
 	}
 }
 

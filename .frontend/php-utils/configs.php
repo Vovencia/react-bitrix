@@ -30,8 +30,12 @@ class Config {
         return '.cache';
     }
     public static function templatePath(...$paths) {
-        return self::rootPath(SITE_TEMPLATE_PATH, ...$paths);
+        return self::rootPath(Page::getTemplatePath(), ...$paths);
     }
+    /**
+     * @param boolean $url
+     * @return string
+     */
     public static function mainScriptFile($url = false) {
         $path = self::templatePath('public', 'main.js');
         if ($url) {
@@ -39,6 +43,11 @@ class Config {
         }
         return $path;
     }
+
+    /**
+     * @param string ...$paths
+     * @return string
+     */
     public static function getUrl(...$paths) {
         $paths = resolve(...$paths);
         $root = self::rootPath();
@@ -47,22 +56,11 @@ class Config {
         }
         return '';
     }
-    public static function mainStylesFile($url = false) {
-        $path = self::templatePath('public', 'styles.css');
-        if ($url) {
-            $path = self::getUrl($path);
-        }
-        return $path;
-    }
-    public static function pageDataFile($url = false) {
-        $currentUrl = getCurrentUrl();
-        $salt = Config::cacheSalt();
-        $ext = Config::cacheExt();
-        $fileName = sha1($salt . $currentUrl) . '.js';
-        $path = self::cachePath('data', $fileName);
-        if ($url) {
-            $path = self::getUrl($path);
-        }
-        return $path;
+    /**
+     * @param string $url
+     * @return string;
+     */
+    public static function getPathFromUrl($url) {
+        return self::rootPath($url);
     }
 }

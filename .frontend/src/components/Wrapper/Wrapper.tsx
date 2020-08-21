@@ -4,7 +4,6 @@ import {IComponent} from "~interfaces/component";
 import {r} from "~utils/render";
 
 export const Wrapper: IComponent = ({children, ...props}) => {
-	console.log('Wrapper', props);
 	return (
 		<WrapperElement {...props}>
 			{ r(children) }

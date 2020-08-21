@@ -11,6 +11,7 @@ import {Router} from "~utils/Router";
 import {safe} from "~utils/safe";
 import {Layout} from "~components/Layout/Layout";
 
+import './App.scss';
 
 export const AppContainer: FC<{hydrateData?: IHydrateData}> = ({hydrateData}) => {
 	return useMemo(() => {
@@ -24,9 +25,9 @@ export const AppContainer: FC<{hydrateData?: IHydrateData}> = ({hydrateData}) =>
 		});
 
 		hydrateData = hydrateData || getHydrateData();
-		const pageStore = new PageStore(hydrateData);
-		const app = new App(pageStore);
-		const router = new Router(app);
+		const app = new App(hydrateData);
+		const router = app.router;
+		const pageStore = app.pageStore;
 		safe(() => {
 			(window as any).__app = app;
 		});

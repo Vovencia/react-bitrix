@@ -12,7 +12,6 @@ class HTMLParser {
      */
     public static function parse($html) {
         $html = self::prepareHTML($html);
-        var_dump($html);
         $dom = new DOMDocument();
         //libxml_use_internal_errors(true);
         $dom->loadXML( '<HTML>' . $html . '</HTML>');

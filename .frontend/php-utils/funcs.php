@@ -1,18 +1,6 @@
 <?php
 namespace RB;
 
-function getCurrentUrl($removeQuery = true) {
-    $url = $_SERVER['REQUEST_URI'];
-    $url = preg_replace("/\?json&/", '?', $url);
-    $url = preg_replace("/[&?]json/", '', $url);
-
-    if ($removeQuery) {
-        $url = preg_replace("/\?.*/", '', $url);
-    }
-
-    return $url;
-}
-
 function resolve(...$paths) {
     $paths = implode('/', $paths);
     $paths = str_replace('\\', '/', $paths);

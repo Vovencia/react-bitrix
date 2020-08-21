@@ -4,8 +4,6 @@ import components from "~src/components";
 import * as React from "react";
 import {IComponent} from "~interfaces/component";
 import {base64} from "~utils/base64";
-import {styleStringToObject} from "~utils/styleStringToObject";
-import {safe} from "~utils/safe";
 import {prepareProps} from "~utils/prepareProps";
 
 type IElement = ReactElement | null | string;
@@ -84,7 +82,6 @@ export function render(children?: IHydrateDataComponent['children'] | ReactEleme
 					...item.props,
 				}
 			} catch (e) {}
-			console.log('_props', _props);
 		}
 
 		item.props = prepareProps(item.props);
