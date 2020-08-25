@@ -18,6 +18,8 @@ namespace RB {
         protected static $cacheEnabled = true;
         protected static $cacheHTMLParse = true;
 
+        protected static $bufferedContent = '';
+
         /**
          * @return bool
          */
@@ -33,10 +35,20 @@ namespace RB {
             ob_start();
         }
 
+        public static function bufferStart() {
+            ob_start();
+        }
+        public static function bufferEnd() {
+            $buffer = ob_get_contents();
+            self::$bufferedContent .= $buffer;
+            ob_end_clean();
+            return $buffer;
+        }
+
         public static function end() {
             if (!self::$started) return;
             self::$started = false;
-            $content = ob_get_contents();
+            $content = self::$bufferedContent . ob_get_contents();
             ob_end_clean();
 
             if (self::$cacheHTMLParse) {
@@ -46,12 +58,39 @@ namespace RB {
             } else {
                 $parsed = HTMLParser::parse($content);
             }
+            $parsed = self::parsedHTMLWalker($parsed);
 
             if ($parsed !== null) {
                 self::$content = $parsed;
             } else {
                 self::$hasError = true;
             }
+        }
+
+        public static function parsedHTMLWalker($parsed) {
+            $parsed = array_values(array_filter($parsed, function($item) {
+                if (is_array($item) && $item['tag'] === 'Store') {
+                    $props = $item['props'];
+                    if (isset($props[':props'])) {
+                        try {
+                            $props = json_decode(base64_decode($props[':props']), true);
+                        } catch (\Exception $e) {}
+                    }
+                    if (isset($props['name']) && isset($props['value'])) {
+                        self::addToStore($props['name'], $props['value']);
+                    }
+
+                    return false;
+                }
+                return true;
+            }));
+            $parsed = array_map(function($item) {
+                if (isset($item['children']) && is_array($item['children']) && !empty($item['children'])) {
+                    $item['children'] = self::parsedHTMLWalker($item['children']);
+                }
+                return $item;
+            }, $parsed);
+            return $parsed;
         }
 
         /**
@@ -301,8 +340,14 @@ namespace {
     /**
      * @param string $key
      * @param $value
+     * @param boolean $renderHTML
      */
-    function r_store($key, $value) {
-         React::addToStore($key, $value);
+    function r_store($key, $value, $renderHTML = true) {
+        if ($renderHTML) {
+            $props = r_props(['name' => $key, 'value' => $value], true);
+            ?><Store<?= $props ?>></Store><?php
+        } else {
+            React::addToStore($key, $value);
+        }
     }
 }

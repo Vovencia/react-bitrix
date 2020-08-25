@@ -2,10 +2,15 @@
     if(!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED!==true) die();
     use RB\React;
     global $APPLICATION;
+
     if (!React::isJSON()) {
         include_once __DIR__ . '/header-html.php';
+        React::start();
+    } else {
+        React::start();
     }
-    React::start();
+
+    React::bufferStart();
     $APPLICATION->IncludeComponent(
         "bitrix:menu",
         "main",
@@ -17,3 +22,4 @@
             "MENU_CACHE_TYPE" => "N",
         )
     );
+    React::bufferEnd();

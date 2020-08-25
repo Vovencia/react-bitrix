@@ -46,4 +46,4 @@
         }
     }
 
-    r('Store/', ['name' => 'nav:main', 'value' => $menu]);
+    r_store('nav:main', $menu);
