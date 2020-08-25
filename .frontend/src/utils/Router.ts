@@ -84,11 +84,6 @@ export class Router extends EventEmitter {
 	}
 	public loadPageData(url: string) {
 		return cancelablePromise<IHydrateData, Error>(async (resolve, reject) => {
-			if (url.indexOf('?') !== -1) {
-				url += '&json';
-			} else {
-				url += '?json';
-			}
 			fetch(url, {
 				headers: {
 					'Content-Type': 'application/json',
